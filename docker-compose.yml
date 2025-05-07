@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  api:
+    build: ./app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./app:/app
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://scanner:scanner@db:5432/scanner
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    ports:
+      - "8000:8000"
+
+  worker:
+    build: ./app
+    command: celery -A worker.celery_app worker --loglevel=info
+    volumes:
+      - ./app:/app
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://scanner:scanner@db:5432/scanner
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: scanner
+      POSTGRES_PASSWORD: scanner
+      POSTGRES_DB: scanner
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata-1:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    restart: always
+    ports:
+      - "6379:6379"
+
+volumes:
+  pgdata-1: 

@@ -1,0 +1,71 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+*.egg
+*.env
+.env
+.venv
+venv/
+ENV/
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# VSCode
+.vscode/
+
+# macOS
+.DS_Store
+
+# Alembic
+alembic/versions/*.pyc
+
+# Docker
+*.log
+*.pid
+*.seed
+*.bak
+*.swp
+*.swo
+
+# Database
+*.sqlite3
+*.db
+
+# Pytest
+.cache/
+.pytest_cache/
+
+# Coverage
+htmlcov/
+.coverage
+.tox/
+.nox/
+coverage.xml
+
+# Mypy
+.mypy_cache/
+.dmypy.json
+
+# Jupyter
+.ipynb_checkpoints
+
+# Build
+build/
+dist/
+*.egg-info/
+
+# Misc
+*.orig
+*.rej
+
+# Ignore local Postgres/Redis data if you ever mount volumes
+pgdata/
+redis-data/
