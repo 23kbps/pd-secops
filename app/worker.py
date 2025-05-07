@@ -5,12 +5,13 @@ import asyncio
 import logging
 from urllib.parse import urlparse
 from celery import Celery, chain
-from db import (
+from db_sync import (
     add_subdomains, add_urls, add_ports, add_vulnerabilities,
     update_scan_status
 )
 from datetime import datetime
 from uuid import UUID
+import tempfile
 
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://redis:6379/0")
@@ -55,11 +56,11 @@ def subfinder_task(self, scan_id: str, target: str):
             "subfinder", "-d", domain, "-silent", "-oJ"
         ], capture_output=True, text=True, check=True)
         subdomains = [json.loads(line)["host"] for line in result.stdout.splitlines() if line.strip()]
-        run_async(add_subdomains(UUID(scan_id), subdomains))
+        add_subdomains(UUID(scan_id), subdomains)
         return {"subdomains": subdomains}
     except Exception as e:
         logger.exception("Error in subfinder_task")
-        run_async(update_scan_status(UUID(scan_id), "failed", datetime.utcnow()))
+        update_scan_status(UUID(scan_id), "failed", datetime.utcnow())
         raise e
 
 @celery_app.task(bind=True)
@@ -68,7 +69,7 @@ def katana_task(self, prev_result, scan_id: str, target: str):
         url = ensure_url(target)
         logger.info(f"katana input: {repr(target)} -> {repr(url)}")
         result = subprocess.run([
-            "katana", "-u", url, "-silent", "-jsonl"
+            "katana", "-u", url, "-silent", "-ob", "-or", "-jsonl"
         ], capture_output=True, text=True, check=True)
         logger.info(f"katana raw output: {result.stdout}")
         urls = []
@@ -80,11 +81,11 @@ def katana_task(self, prev_result, scan_id: str, target: str):
                         urls.append(j["url"])
                 except Exception as ex:
                     logger.warning(f"Could not parse katana line: {line} ({ex})")
-        run_async(add_urls(UUID(scan_id), urls))
+        add_urls(UUID(scan_id), urls)
         return {**prev_result, "urls": urls}
     except Exception as e:
         logger.exception("Error in katana_task")
-        run_async(update_scan_status(UUID(scan_id), "failed", datetime.utcnow()))
+        update_scan_status(UUID(scan_id), "failed", datetime.utcnow())
         raise e
 
 @celery_app.task(bind=True)
@@ -103,11 +104,11 @@ def naabu_task(self, prev_result, scan_id: str, target: str):
         )
         logger.info(f"naabu raw output: {result.stdout}")
         ports = [json.loads(line) for line in result.stdout.splitlines() if line.strip()]
-        run_async(add_ports(UUID(scan_id), ports))
+        add_ports(UUID(scan_id), ports)
         return {**prev_result, "ports": ports}
     except Exception as e:
         logger.exception("Error in naabu_task")
-        run_async(update_scan_status(UUID(scan_id), "failed", datetime.utcnow()))
+        update_scan_status(UUID(scan_id), "failed", datetime.utcnow())
         raise e
 
 @celery_app.task(bind=True)
@@ -118,15 +119,20 @@ def nuclei_task(self, prev_result, scan_id: str, target: str, nuclei_templates):
         logger.info(f"nuclei input targets: {targets}")
         templates_args = []
         for t in nuclei_templates:
-            templates_args.extend(["-tl", t])
-        result = subprocess.run([
-            "nuclei", "-list", "-", "-jsonl"] + templates_args,
-            input="\n".join(targets),
-            text=True,
-            capture_output=True,
-            check=True
-        )
+            templates_args.extend(["-t", t])
+        # Write targets to a temp file
+        with tempfile.NamedTemporaryFile(mode="w+", delete=False) as f:
+            for t in targets:
+                f.write(f"{t}\n")
+            f.flush()
+            result = subprocess.run(
+                ["nuclei", "-list", f.name, "-jsonl"] + templates_args,
+                text=True,
+                capture_output=True,
+                check=True
+            )
         logger.info(f"nuclei raw output: {result.stdout}")
+        logger.error(f"nuclei stderr: {result.stderr}")
         vulns = []
         for line in result.stdout.splitlines():
             if line.strip():
@@ -137,20 +143,22 @@ def nuclei_task(self, prev_result, scan_id: str, target: str, nuclei_templates):
                     "matched_url": j.get("matched", ""),
                     "description": j.get("info", {}).get("name", "")
                 })
-        run_async(add_vulnerabilities(UUID(scan_id), vulns))
-        run_async(update_scan_status(UUID(scan_id), "completed", datetime.utcnow()))
+        add_vulnerabilities(UUID(scan_id), vulns)
+        update_scan_status(UUID(scan_id), "completed", datetime.utcnow())
         return {**prev_result, "vulnerabilities": vulns}
     except Exception as e:
         logger.exception("Error in nuclei_task")
-        run_async(update_scan_status(UUID(scan_id), "failed", datetime.utcnow()))
+        update_scan_status(UUID(scan_id), "failed", datetime.utcnow())
         raise e
 
 # Chain entrypoint
 @celery_app.task
 def start_scan_chain(scan_id: str, target: str, nuclei_templates):
+    logger.info(f"Scan {scan_id} started")
     return chain(
         subfinder_task.s(scan_id, target),
         katana_task.s(scan_id, target),
         naabu_task.s(scan_id, target),
         nuclei_task.s(scan_id, target, nuclei_templates)
     )() 
+    logger.info(f"Scan {scan_id} completed")
