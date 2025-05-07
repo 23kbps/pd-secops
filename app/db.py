@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import declarative_base, relationship
-from sqlalchemy import Column, String, DateTime, Text, Integer, ForeignKey, Enum
+from sqlalchemy import Column, String, DateTime, Text, Integer, ForeignKey, Enum, JSON
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 import enum
 from sqlalchemy.future import select
@@ -63,6 +63,7 @@ class Vulnerability(Base):
     severity = Column(String, nullable=False)
     matched_url = Column(Text, nullable=False)
     description = Column(Text, nullable=False)
+    details = Column(JSON, nullable=True)
     scan = relationship("Scan", back_populates="vulnerabilities")
 
 # --- CRUD Functions ---
@@ -141,6 +142,7 @@ async def get_scan_results(scan_id: UUID):
                 "severity": v.severity,
                 "matched_url": v.matched_url,
                 "description": v.description,
+                "details": v.details,
             }
             for v in scan.vulnerabilities
         ]

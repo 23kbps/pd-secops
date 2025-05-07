@@ -126,7 +126,7 @@ def nuclei_task(self, prev_result, scan_id: str, target: str, nuclei_templates):
                 f.write(f"{t}\n")
             f.flush()
             result = subprocess.run(
-                ["nuclei", "-list", f.name, "-jsonl"] + templates_args,
+                ["nuclei", "-list", f.name, "-jsonl", "-silent"] + templates_args,
                 text=True,
                 capture_output=True,
                 check=True
@@ -137,12 +137,15 @@ def nuclei_task(self, prev_result, scan_id: str, target: str, nuclei_templates):
         for line in result.stdout.splitlines():
             if line.strip():
                 j = json.loads(line)
-                vulns.append({
-                    "template_id": j.get("templateID", ""),
-                    "severity": j.get("info", {}).get("severity", "unknown"),
-                    "matched_url": j.get("matched", ""),
-                    "description": j.get("info", {}).get("name", "")
-                })
+                info = j.get("info", {})
+                vuln = {
+                    "template_id": j.get("template-id", ""),
+                    "severity": info.get("severity", "unknown"),
+                    "matched_url": j.get("matched-at", ""),
+                    "description": info.get("description", ""),
+                    "details": j,
+                }
+                vulns.append(vuln)
         add_vulnerabilities(UUID(scan_id), vulns)
         update_scan_status(UUID(scan_id), "completed", datetime.utcnow())
         return {**prev_result, "vulnerabilities": vulns}

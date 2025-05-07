@@ -2,7 +2,7 @@ import os
 from uuid import UUID
 from datetime import datetime
 from typing import List, Optional
-from sqlalchemy import create_engine, Column, String, DateTime, Text, Integer, ForeignKey, Enum
+from sqlalchemy import create_engine, Column, String, DateTime, Text, Integer, ForeignKey, Enum, JSON
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 import enum
@@ -60,6 +60,7 @@ class Vulnerability(Base):
     severity = Column(String, nullable=False)
     matched_url = Column(Text, nullable=False)
     description = Column(Text, nullable=False)
+    details = Column(JSON, nullable=True)
     scan = relationship("Scan", back_populates="vulnerabilities")
 
 def add_subdomains(scan_id: UUID, subdomains: List[str]):
