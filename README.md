@@ -82,21 +82,26 @@ This app is designed for scalable, distributed security scanning using modern cl
 +---------+        +----------------+        +-----------------+
 |  User   | <----> |   FastAPI API  | <----> |   PostgreSQL    |
 +---------+        +----------------+        +-----------------+
-                        |   ^
-                        v   |
-                 +----------------+
-                 |   Redis (Broker)|
-                 +----------------+
-                        |
-                        v
-                 +----------------+
-                 | Celery Workers |
-                 +----------------+
+                        |   ^                      ^
+                        v   |                      |
+                 +----------------+                |
+                 |   Redis (Broker)|                |
+                 +----------------+                |
+                        |                          |
+                        v                          |
+                 +----------------+                |
+                 | Celery Worker  |----------------+
+                 +----------------+                |
+                        |                          |
+                        v                          |
+        +---------------------------------------------+
+        | Celery Chain:                               |
+        |   subfinder → katana → naabu → nuclei       |
+        +---------------------------------------------+
                         |
                         v
          +-----------------------------------+
-         | ProjectDiscovery Tools (subfinder, |
-         | katana, naabu, nuclei)             |
+         | ProjectDiscovery Tools (binaries) |
          +-----------------------------------+
 ```
 
