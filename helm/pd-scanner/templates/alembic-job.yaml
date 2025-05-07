@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pd-scanner-alembic
+  labels:
+    app: pd-scanner
+    component: alembic
+spec:
+  template:
+    metadata:
+      labels:
+        app: pd-scanner
+        component: alembic
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: alembic
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["alembic"]
+          args: ["upgrade", "head"]
+          env:
+            - name: DATABASE_URL
+              value: "postgresql://{{ .Values.postgresql.auth.username }}:{{ .Values.postgresql.auth.password }}@pd-scanner-postgresql:5432/{{ .Values.postgresql.auth.database }}" 

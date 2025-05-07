@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pd-scanner-worker
+  labels:
+    app: pd-scanner
+    component: worker
+spec:
+  replicas: {{ .Values.replicaCount.worker }}
+  selector:
+    matchLabels:
+      app: pd-scanner
+      component: worker
+  template:
+    metadata:
+      labels:
+        app: pd-scanner
+        component: worker
+    spec:
+      containers:
+        - name: worker
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["celery"]
+          args: ["-A", "worker.celery_app", "worker", "--loglevel=info"]
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}
+          env:
+            - name: CELERY_BROKER_URL
+              value: "redis://pd-scanner-redis:6379/0"
+            - name: CELERY_RESULT_BACKEND
+              value: "redis://pd-scanner-redis:6379/0"
+            - name: DATABASE_URL
+              value: "postgresql+asyncpg://{{ .Values.postgresql.auth.username }}:{{ .Values.postgresql.auth.password }}@pd-scanner-postgresql:5432/{{ .Values.postgresql.auth.database }}" 

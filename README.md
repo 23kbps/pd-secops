@@ -42,6 +42,19 @@ curl http://localhost:8000/scans/<scan_id>
 curl http://localhost:8000/scans/<scan_id>/results
 ```
 
+### 5. Deploy to Kubernetes with Helm
+
+```bash
+# Create the namespace if it doesn't exist
+kubectl create namespace pd-scanner
+
+# Install the Helm chart into the pd-scanner namespace
+helm install pd-scanner ./helm/pd-scanner -n pd-scanner
+
+# Or upgrade if already installed
+helm upgrade pd-scanner ./helm/pd-scanner -n pd-scanner
+```
+
 ## Project Structure
 - `app/` - FastAPI app, Celery worker, DB models
 - `Dockerfile` - App image (includes ProjectDiscovery tools)

@@ -1,0 +1,44 @@
+{{- if .Values.redis.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pd-scanner-redis
+  labels:
+    app: pd-scanner
+    component: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pd-scanner
+      component: redis
+  template:
+    metadata:
+      labels:
+        app: pd-scanner
+        component: redis
+    spec:
+      containers:
+        - name: redis
+          image: {{ .Values.redis.image }}
+          ports:
+            - containerPort: 6379
+          resources:
+            {{- toYaml .Values.redis.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pd-scanner-redis
+  labels:
+    app: pd-scanner
+    component: redis
+spec:
+  type: ClusterIP
+  ports:
+    - port: 6379
+      targetPort: 6379
+  selector:
+    app: pd-scanner
+    component: redis
+{{- end }} 

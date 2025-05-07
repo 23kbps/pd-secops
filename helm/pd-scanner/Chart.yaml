@@ -1,0 +1,5 @@
+apiVersion: v2
+name: pd-scanner
+version: 0.1.0
+description: A scalable security scanner (FastAPI + Celery + Redis + Postgres)
+type: application 

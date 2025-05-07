@@ -4,9 +4,18 @@ from alembic import context
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../')
-from db import Base
+from db_sync import Base
 
 config = context.config
+
+# Inject env var into config before usage
+# Use the same default as your docker-compose and Helm chart
+# (asyncpg for async, or change to postgresql for sync if needed)
+db_url = os.getenv("DATABASE_URL")
+if not db_url:
+    raise Exception("DATABASE_URL environment variable not set")
+config.set_main_option("sqlalchemy.url", db_url)
+
 fileConfig(config.config_file_name)
 target_metadata = Base.metadata
 

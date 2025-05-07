@@ -1,0 +1,60 @@
+replicaCount:
+  api: 3
+  worker: 5
+
+image:
+  repository: 440744225412.dkr.ecr.us-east-1.amazonaws.com/pd-scanner
+  tag: latest
+  pullPolicy: Always
+
+api:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+worker:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+redis:
+  enabled: true
+  image: redis:7
+  resources: {}
+
+postgresql:
+  enabled: true
+  image: postgres:15
+  resources: {}
+  auth:
+    username: scanner
+    password: scanner
+    database: scanner
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: pd-scanner.alb.bonsjo.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - hosts:
+        - pd-scanner.alb.bonsjo.com
+      secretName: pd-scanner-tls 
